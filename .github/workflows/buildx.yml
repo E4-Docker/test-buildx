@@ -24,14 +24,14 @@ jobs:
         with:
           context: .
           load: true
-          tags: local-test:${{ matrix.platform }}
+          tags: local-test:${{ strategy.job-index }}
           platforms: ${{ matrix.platform }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Test
         run: |
-          docker run --rm --platform ${{ matrix.platform }} local-test:${{ matrix.platform }}
+          docker run --rm --platform ${{ matrix.platform }} local-test:${{ strategy.job-index }}
 
   push:
     needs: build-and-test
