@@ -1,6 +1,12 @@
 name: Build and Push
 
 on:
+  workflow_call:
+    inputs:
+      image_name:
+        type: string
+        required: false
+        description: 'Docker image name'
   workflow_dispatch:
   push:
     branches:
@@ -76,7 +82,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/${{ steps.lowercase.outputs.repo }}
+          images: ghcr.io/${{ inputs.image_name || vars.IMAGE_NAME || steps.lowercase.outputs.repo }}
 
       - name: Build and push
         uses: docker/build-push-action@v7
