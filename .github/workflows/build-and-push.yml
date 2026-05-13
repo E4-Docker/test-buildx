@@ -51,7 +51,6 @@ jobs:
 
   push:
     needs: build-and-test
-    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -73,16 +72,17 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Lowercase repo name
-        id: lowercase
+      - name: Get repository information
+        id: repo_info
         run: |
-          echo "repo=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
+          echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
+          echo "name=${GITHUB_EVENT_REPOSITORY_NAME,,}" >> $GITHUB_OUTPUT
 
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/${{ inputs.image_name || vars.IMAGE_NAME || steps.lowercase.outputs.repo }}
+          images: ghcr.io/${{ steps.repo_info.outputs.owner }}/${{ inputs.image_name || vars.IMAGE_NAME || steps.repo_info.outputs.name }}
 
       - name: Build and push
         uses: docker/build-push-action@v7
