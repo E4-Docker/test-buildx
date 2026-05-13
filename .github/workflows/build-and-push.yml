@@ -76,7 +76,8 @@ jobs:
         id: repo_info
         run: |
           echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
-          echo "name=${GITHUB_EVENT_REPOSITORY_NAME,,}" >> $GITHUB_OUTPUT
+          NAME=${GITHUB_REPOSITORY#*/}
+          echo "name=${NAME,,}" >> $GITHUB_OUTPUT
 
       - name: Docker meta
         id: meta
