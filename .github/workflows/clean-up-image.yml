@@ -1,0 +1,70 @@
+name: Clean Up Image
+
+on:
+  workflow_call:
+    inputs:
+      image_name:
+        type: string
+        required: false
+        description: 'Docker image name'
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+      - develop
+    types:
+      - closed
+jobs:
+  clean-up:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Set up env
+        run: |
+          echo "REPOSITORY_OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+
+          REPOSITORY_NAME=${GITHUB_REPOSITORY#*/}
+          REPOSITORY_NAME=${REPOSITORY_NAME,,}
+          echo "REPOSITORY_NAME=${REPOSITORY_NAME}" >> $GITHUB_ENV
+
+          IMAGE_NAME="${{ inputs.image_name || vars.IMAGE_NAME }}"
+          IMAGE_NAME="${IMAGE_NAME:-$REPOSITORY_NAME}"
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ env.REPOSITORY_OWNER }}/${{ env.IMAGE_NAME }}
+
+      - name: Set up env
+        run: |
+          IMAGE_TAG="${{ steps.meta.outputs.version }}"
+          echo "삭제할 이미지 태그: ${IMAGE_TAG}"
+
+          OWNER_TYPE="orgs"
+          if [ "${{ github.event.repository.owner.type }}" = "User" ]; then OWNER_TYPE="users"; fi
+
+          curl -s -X GET -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/${OWNER_TYPE}/${{ env.REPOSITORY_OWNER }}/packages/container/${{ env.IMAGE_NAME }}/versions" \
+            > versions.json
+
+          VERSION_ID=$(jq -r --arg tag "${IMAGE_TAG}" '.[] | select(.metadata.container.tags | index($tag)) | .id' versions.json)
+          echo "삭제할 이미지 버전 ID: ${VERSION_ID}"
+          echo "VERSION_ID=${VERSION_ID}" >> $GITHUB_ENV
+
+      - name: Clean up untagged images
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: "${{ env.IMAGE_NAME }}"
+          package-type: container
+          delete-only-untagged-versions: true
+
+      - name: Clean up temporary image
+        if: env.VERSION_ID != ''
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: "${{ env.IMAGE_NAME }}"
+          package-type: container
+          package-version-ids: "${{ env.VERSION_ID }}"
