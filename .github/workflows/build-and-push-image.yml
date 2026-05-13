@@ -1,4 +1,4 @@
-name: Build and Push
+name: Build and Push Image
 
 on:
   workflow_call:
@@ -72,18 +72,23 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Get repository information
-        id: repo_info
+      - name: Set up env
         run: |
-          echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
-          NAME=${GITHUB_REPOSITORY#*/}
-          echo "name=${NAME,,}" >> $GITHUB_OUTPUT
+          echo "REPOSITORY_OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+
+          REPOSITORY_NAME=${GITHUB_REPOSITORY#*/}
+          REPOSITORY_NAME=${REPOSITORY_NAME,,}
+          echo "REPOSITORY_NAME=${REPOSITORY_NAME}" >> $GITHUB_ENV
+
+          IMAGE_NAME="${{ inputs.image_name || vars.IMAGE_NAME }}"
+          IMAGE_NAME="${IMAGE_NAME:-$REPOSITORY_NAME}"
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
 
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/${{ steps.repo_info.outputs.owner }}/${{ inputs.image_name || vars.IMAGE_NAME || steps.repo_info.outputs.name }}
+          images: ghcr.io/${{ env.REPOSITORY_OWNER }}/${{ env.IMAGE_NAME }}
 
       - name: Build and push
         uses: docker/build-push-action@v7
